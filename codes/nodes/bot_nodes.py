@@ -1,5 +1,6 @@
 # ==================== GRAPH NODES ====================
 import logging
+import uuid
 from typing import Dict
 from langchain.schema import HumanMessage, AIMessage
 
@@ -9,6 +10,7 @@ from codes.prompt_manager import PromptManager
 from codes.rag_system import TigressTechRAG
 from codes.API.huggingface_api import huggingface_completion
 from codes.supervisor import Supervisor
+from codes.escalation_evaluator import EscalationEvaluator  
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Initialize global instances (consider using dependency injection pattern)
 prompt_manager = PromptManager()
 rag = TigressTechRAG()
+escalation_evaluator = EscalationEvaluator()  
 
 
 def input_node(state: AgentState) -> Dict:
@@ -29,7 +32,12 @@ def input_node(state: AgentState) -> Dict:
     return {
         "messages": [HumanMessage(content=formatted_input)],
         "sender": sender,
-        "needs_rag": True  # Default to needing RAG
+        "needs_rag": True,  # Default to needing RAG
+        "requires_human_escalation": False,  
+        "escalation_reason": None,  
+        "escalation_score": 0.0,
+        "requires_human_decision": False,
+        "human_question": None
     }
 
 
@@ -105,9 +113,114 @@ def llm_node(state: AgentState) -> Dict:
         "messages": [AIMessage(content=response_text)],
         "response": response_text
     }
+
+
+def escalation_check_node(state: AgentState) -> Dict:
+    """Check if conversation needs human escalation"""
+    user_input = state["user_input"]
+    sender = state["sender"]
+    current_ai_response = state.get("response", "")
     
+    # Convert message history to the format expected by escalation evaluator
+    conversation_history = []
+    for msg in state["messages"]:
+        conversation_history.append({
+            "type": msg.type,  # "human" or "ai"
+            "content": msg.content,
+            "sender": sender if msg.type == "human" else "assistant"
+        })
+    
+    # Evaluate escalation need
+    should_escalate, reason, score = escalation_evaluator.evaluate_escalation_need(
+        current_message=user_input,
+        conversation_history=conversation_history,
+        sender=sender,
+        current_ai_response=current_ai_response
+    )
+    
+    logger.info(f"Escalation check: {should_escalate}, Score: {score:.2f}, Reason: {reason}")
+    
+    return {
+        "requires_human_escalation": should_escalate,
+        "escalation_reason": reason,
+        "escalation_score": score
+    }
+
+
+def ask_human_node(state: AgentState) -> Dict:
+    """Node that interrupts to ask human for guidance"""
+    user_input = state["user_input"]
+    escalation_reason = state.get("escalation_reason", "complex query")
+    
+    human_question = f"""
+🤖 **Human Guidance Requested**
+
+**User Query:** {user_input}
+**Reason for Escalation:** {escalation_reason}
+
+**Options:**
+1. 'proceed' - I'll handle this automatically
+2. 'escalate' - Transfer to human agent
+3. Or provide specific instructions
+
+**Your decision:**"""
+
+    # Generate unique ID for this human request
+    request_id = str(uuid.uuid4())[:8]
+    
+    # This creates the interrupt - graph pauses here
+    return {
+        "messages": [AIMessage(
+            content=human_question,
+            tool_calls=[{
+                "name": "ask_human",
+                "args": {"question": human_question, "request_id": request_id},
+                "id": f"human_decision_{request_id}"
+            }]
+        )],
+        "requires_human_decision": True,
+        "human_question": human_question,
+        "human_request_id": request_id
+    }
+
+
+def process_human_response_node(state: AgentState) -> Dict:
+    """Process the human's response and continue accordingly"""
+    human_response = state.get("human_response", "").lower().strip()
+    
+    if human_response in ['proceed', '1', 'yes', 'ok', 'handle']:
+        # Human wants AI to proceed automatically
+        response = "Proceeding with automated response as instructed..."
+        action = "proceed_automated"
+    elif human_response in ['escalate', '2', 'no', 'transfer']:
+        # Human wants immediate escalation
+        response = "🚨 Escalating to human agent as instructed..."
+        action = "escalate_immediate"
+    else:
+        # Human provided specific instructions
+        response = f"Following your instructions: {human_response}"
+        action = "custom_instructions"
+    
+    logger.info(f"Human decision processed: {action} - Response: {human_response}")
+    
+    return {
+        "requires_human_decision": False,
+        "human_response": human_response,
+        "response": response,
+        "messages": state["messages"] + [AIMessage(content=response)],
+        "human_action_taken": action
+    }
+
 
 def output_node(state: AgentState) -> Dict:
     """Final node: Prepares response for output"""
-    logger.info(f"Response ready for Matrix: {state['response']}")
+    if state.get("requires_human_escalation", False) and not state.get("requires_human_decision", False):
+        logger.info(f"ESCALATION NEEDED - Reason: {state['escalation_reason']}")
+        # Log escalation for monitoring
+        logger.info(f"Human escalation triggered: {state['escalation_reason']}")
+    
+    if state.get("requires_human_decision", False):
+        logger.info("⏳ Waiting for human decision...")
+    
+    logger.info(f"Response ready for Matrix: {state['response'][:100]}...")
     return state

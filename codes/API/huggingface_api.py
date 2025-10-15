@@ -1,4 +1,4 @@
-# =================== MATRXI API ============================================
+
 
 # Import the required modules
 import os
@@ -61,3 +61,4 @@ def huggingface_completion(prompt: str) -> dict:
 
         # Return a dictionary with the status and an empty response
         return {'status': 0, 'response': ''}
+   

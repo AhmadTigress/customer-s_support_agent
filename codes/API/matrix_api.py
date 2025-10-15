@@ -2,6 +2,8 @@
 import os
 import requests
 import logging
+import threading
+import time
 from dotenv import load_dotenv
 
 # Set up logging
@@ -25,6 +27,7 @@ class MatrixClient:
         self.user = user
         self.password = password
         self.access_token = None
+        self._shutdown_event = threading.Event()  
     
     def login(self):
         """Authenticate and get access token"""
@@ -101,20 +104,22 @@ class MatrixClient:
             invited_rooms.append(room_id)
         
         return invited_rooms
-    
 
     def listen_for_messages(self, process_message_callback=None):
-        """Continuously listen for messages and process them"""
+        """Continuously listen for messages and process them with graceful shutdown"""
         sync_token = None
         logger.info("Starting to listen for messages...")
-    
-        while True:
+        
+        while not self._shutdown_event.is_set():
             try:
                 # Get new messages
                 sync_token, messages = self.sync_messages(sync_token)
             
                 # Process each message
                 for message in messages:
+                    if self._shutdown_event.is_set():
+                        break  # Exit early if shutdown requested
+                        
                     room_id = message.get("room_id")
                     sender = message.get("sender")
                     content = message.get("content", {})
@@ -132,11 +137,27 @@ class MatrixClient:
                     else:
                         # Default behavior for simple responses
                         if body.lower() in ["hello", "hi", "hey", "hello!"]:
-                            self.send_message(room_id, "Hello! How can I help you today? 😊")
-                        # Add more default responses here...
-                    
+                            self.send_message(room_id, "Hello! How can I help you today?")
+                        
+                
             except Exception as e:
                 logger.error(f"Error in message listening: {e}")
-                # Optional: add a delay before retrying
-                import time
-                time.sleep(5)
+                if not self._shutdown_event.is_set():
+                    # Wait with timeout to allow shutdown check
+                    self._shutdown_event.wait(5)
+        
+        logger.info("Message listener stopped gracefully")
+
+    def stop_listening(self):
+        """Gracefully stop the message listening loop"""
+        logger.info("Shutting down message listener...")
+        self._shutdown_event.set()
+
+    def __enter__(self):
+        """Context manager entry - auto login"""
+        self.login()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - auto cleanup"""
+        self.stop_listening()

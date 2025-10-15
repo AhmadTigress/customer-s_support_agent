@@ -114,7 +114,7 @@ def schedule_appointment(name: str, contact: str, preferred_time: str = "") -> s
         
         # Format confirmation message
         confirmation = f"""
-✅ APPOINTMENT SCHEDULED
+APPOINTMENT SCHEDULED
 
 Appointment ID: {appointment_id}
 Customer: {name}
