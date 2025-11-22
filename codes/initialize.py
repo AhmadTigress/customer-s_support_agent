@@ -1,3 +1,32 @@
+# ==================== MISSING IMPORTS ADDED ====================
+import os
+import torch
+import logging
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from langchain_community.llms import HuggingFacePipelineLLM
+
+# Import your custom classes and components
+from codes.API.matrix_api import MatrixClient
+from codes.prompt_manager import PromptManager
+from codes.rag_system import TigressTechRAG
+
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load the environment variables from the .env file
+load_dotenv()
+
+# ==================== MISSING CONFIG VARIABLES ====================
+MODEL_NAME = os.getenv("MODEL_NAME", "HuggingFaceH4/zephyr-7b-beta")  # Fallback model
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+MATRIX_HOMESERVER = os.getenv("MATRIX_HOMESERVER", "")
+MATRIX_USER = os.getenv("MATRIX_USER", "")
+MATRIX_PASSWORD = os.getenv("MATRIX_PASSWORD", "")
+
+
+
 # ==================== INITIALIZATION ====================
 # Initialize components in proper order
 logger.info("Initializing components...")

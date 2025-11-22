@@ -1,6 +1,7 @@
 # supervisor.py
 import logging
-from typing import Dict, List
+import re
+from typing import Dict, List, Optional
 from codes.API.huggingface_api import huggingface_completion
 from codes.custom_tools import get_all_tools, calculator, schedule_appointment
 
@@ -14,6 +15,14 @@ class Supervisor:
     
     def handle_query(self, user_input: str, conversation_history: str = "") -> Dict:
         """Handle query and determine appropriate response with tool usage"""
+        # Validate input first
+        if not user_input or not isinstance(user_input, str) or len(user_input.strip()) == 0:
+            return {
+                "response": "Please provide a valid input.",
+                "agent_type": "error",
+                "context_used": "Input validation"
+            }
+        
         # Detect if tool should be used
         tool_response = self._try_use_tools(user_input)
         if tool_response:
@@ -49,36 +58,126 @@ class Supervisor:
             "context_used": context
         }
     
-    def _try_use_tools(self, user_input: str) -> str:
+    def _try_use_tools(self, user_input: str) -> Optional[str]:
         """Check if user input matches any tool pattern and execute if so"""
-        user_input_lower = user_input.lower()
+        if not user_input or len(user_input.strip()) < 2:
+            return None
+            
+        user_input_lower = user_input.lower().strip()
         
-        # Check for calculator queries
-        calc_keywords = ['calculate', 'math', 'what is', '+', '-', '*', '/', '^', 'sqrt', 'sin', 'cos']
-        if any(keyword in user_input_lower for keyword in calc_keywords):
+        # Check for calculator queries with better pattern matching
+        if self._is_calculation_request(user_input_lower):
             try:
-                # Extract the expression (simple heuristic)
-                if 'calculate' in user_input_lower:
-                    expression = user_input.split('calculate', 1)[1].strip()
+                expression = self._extract_math_expression(user_input)
+                if expression:
+                    # CONSISTENT TOOL CALLING: Use dictionary input
+                    result = calculator.invoke({"expression": expression})
+                    return f"Calculation result: {result}"
                 else:
-                    expression = user_input
-                
-                return calculator.invoke(expression)
+                    return "I couldn't extract a valid mathematical expression. Please try something like 'calculate 2+2'."
             except Exception as e:
-                return f"Error using calculator: {e}"
+                logger.error(f"Calculator error: {e}")
+                return "Sorry, I encountered an error with the calculator. Please check your expression."
         
-        # Check for appointment scheduling
-        appointment_keywords = ['schedule', 'appointment', 'meeting', 'book a time']
-        if any(keyword in user_input_lower for keyword in appointment_keywords):
+        # Check for appointment scheduling with better validation
+        if self._is_appointment_request(user_input_lower):
             try:
-                # Extract details (this is simplified - you might want more sophisticated parsing)
-                if 'name' in user_input_lower and 'contact' in user_input_lower:
-                    # Parse name and contact from input
-                    # This is a simple example - you might want to use regex or more advanced parsing
-                    return schedule_appointment.invoke(user_input)
+                # Extract and validate appointment details
+                appointment_details = self._extract_appointment_details(user_input)
+                if appointment_details:
+                    # CONSISTENT TOOL CALLING: Use dictionary input
+                    result = schedule_appointment.invoke(appointment_details)
+                    return result
                 else:
-                    return "To schedule an appointment, please provide your name and contact information."
+                    return "To schedule an appointment, please provide details including name, contact information, and preferred time."
             except Exception as e:
-                return f"Error scheduling appointment: {e}"
+                logger.error(f"Appointment scheduling error: {e}")
+                return "Sorry, I encountered an error while scheduling the appointment. Please try again with clear details."
         
         return None
+    
+    def _is_calculation_request(self, user_input: str) -> bool:
+        """More precise calculation detection"""
+        calc_keywords = [
+            'calculate', 'compute', 'what is', 'how much is',
+            'math', 'mathematical', 'arithmetic'
+        ]
+        math_operators = r'[\+\-\*\/\^]|sqrt|sin|cos|tan|log'
+        
+        has_keyword = any(keyword in user_input for keyword in calc_keywords)
+        has_operator = re.search(math_operators, user_input)
+        has_numbers = re.search(r'\d+', user_input)
+        
+        return has_keyword or (has_operator and has_numbers)
+    
+    def _extract_math_expression(self, user_input: str) -> Optional[str]:
+        """Extract mathematical expression from user input"""
+        try:
+            # Remove common phrases and clean up
+            cleaned = re.sub(r'(calculate|compute|what is|how much is)', '', user_input, flags=re.IGNORECASE)
+            cleaned = cleaned.strip()
+            
+            # Extract potential math expression
+            # Look for sequences with numbers and operators
+            math_pattern = r'[\(\)\d\s\.\+\-\*\/\^\,]+'
+            match = re.search(math_pattern, cleaned)
+            
+            if match:
+                expression = match.group().strip()
+                # Basic validation - should contain at least one number and operator
+                if re.search(r'\d', expression) and re.search(r'[\+\-\*\/\^]', expression):
+                    return expression
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error extracting math expression: {e}")
+            return None
+    
+    def _is_appointment_request(self, user_input: str) -> bool:
+        """More precise appointment detection"""
+        appointment_keywords = [
+            'schedule', 'appointment', 'meeting', 'book a time',
+            'set up a meeting', 'make an appointment'
+        ]
+        contact_indicators = ['name', 'contact', 'email', 'phone', 'call']
+        
+        has_appointment_keyword = any(keyword in user_input for keyword in appointment_keywords)
+        has_contact_info = any(indicator in user_input for indicator in contact_indicators)
+        
+        return has_appointment_keyword or has_contact_info
+    
+    def _extract_appointment_details(self, user_input: str) -> Optional[Dict]:
+        """Extract structured appointment details from user input"""
+        try:
+            details = {}
+            
+            # Extract name (simple pattern)
+            name_match = re.search(r'(?:name is|my name is|call me)\s+([A-Za-z\s]+)', user_input, re.IGNORECASE)
+            if name_match:
+                details['name'] = name_match.group(1).strip()
+            
+            # Extract contact info
+            email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', user_input)
+            if email_match:
+                details['email'] = email_match.group(0)
+            
+            phone_match = re.search(r'(\+?[\d\s\-\(\)]{10,})', user_input)
+            if phone_match:
+                details['phone'] = phone_match.group(0).strip()
+            
+            # Extract time/date references
+            time_indicators = ['tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+            for indicator in time_indicators:
+                if indicator in user_input.lower():
+                    details['preferred_time'] = indicator
+                    break
+            
+            # If we have at least a name, proceed
+            if details.get('name'):
+                details['raw_input'] = user_input  # Pass raw input for further processing
+                return details
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error extracting appointment details: {e}")
+            return None
