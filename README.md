@@ -22,6 +22,8 @@ CUSTOM_SUPPORT/
 │   │   └── bot_state.py            # State management
 │   ├── custom_tools.py             # Custom tools (calculator, scheduler)
 │   ├── document_loader.py          # Document loading and processing
+│   ├── escalation_evaluator.py     # Detects need for escalation 
+│   ├── initialize.py               # Loads model and services      
 │   ├── main.py                     # Main application entry point
 │   ├── prompt_manager.py           # Prompt management and formatting
 │   ├── rag_system.py               # RAG system implementation
@@ -31,6 +33,35 @@ CUSTOM_SUPPORT/
 │   └── services_policies.txt       # Service policies document
 ├── .env                            # Environment variables
 └── requirements.txt                # Python dependencies
+```
+
+For the test files
+# Test Architecture
+```text
+CUSTOM_SUPPORT/
+├── tests/
+│   ├── unit/
+│   │   ├── test_bot_state.py
+│   │   ├── test_custom_tools.py
+│   │   ├── test_document_loader.py
+│   │   ├── test_escalation_evaluator.py
+│   │   ├── test_initialize.py
+│   │   ├── test_prompt_manager.py
+│   │   ├── test_rag_system.py
+│   │   ├── test_prompt_config.py
+│   │   ├── test_main.py
+│   │   └── test_file_resources.py
+│   ├── mock/
+│   │   ├── test_bot_nodes.py
+│   │   ├── test_bot_graph.py
+│   │   ├── test_supervisor.py
+│   │   ├── test_huggingface_api.py
+│   │   └── test_matrix_api.py
+│   ├── integration/
+│   │   ├── test_live_huggingface.py
+│   │   ├── test_live_matrix.py
+│   │   └── test_full_graph.py
+│   └── conftest.py
 ```
 
 ## Key Features
