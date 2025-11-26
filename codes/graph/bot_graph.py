@@ -4,8 +4,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
 # Import nodes and state
-from codes.states.bot_state import AgentState
-from codes.nodes.bot_nodes import (
+from states.bot_state import AgentState
+from nodes.bot_nodes import (
     input_node,
     detect_query_type_node,
     secure_rag_node,

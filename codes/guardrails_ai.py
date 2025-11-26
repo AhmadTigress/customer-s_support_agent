@@ -9,8 +9,8 @@ os.environ["OTEL_SDK_DISABLED"] = "true"
 from typing import Any, Dict, List
 from pprint import pprint
 
-from codes.graph.bot_graph import create_workflow
-from codes.states.bot_state import AgentState
+from graph.bot_graph import create_workflow
+from states.bot_state import AgentState
 from guardrails import Guard, OnFailAction
 from guardrails.hub import ToxicLanguage, UnusualPrompt, ProfanityFree
 

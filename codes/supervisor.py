@@ -2,8 +2,8 @@
 import logging
 import re
 from typing import Dict, List, Optional
-from codes.API.huggingface_api import huggingface_completion
-from codes.custom_tools import get_all_tools, calculator, schedule_appointment
+from API.huggingface_api import huggingface_completion
+from custom_tools import get_all_tools, calculator, schedule_appointment
 
 logger = logging.getLogger(__name__)
 

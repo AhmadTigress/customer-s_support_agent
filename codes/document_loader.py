@@ -1,3 +1,4 @@
+import os
 import logging
 from pathlib import Path
 from langchain.schema import Document
@@ -5,6 +6,12 @@ from langchain.schema import Document
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+current_dir = os.path.dirname(__file__)
+project_root = os.path.dirname(current_dir)  
+services_path = os.path.join(project_root, "files", "services_policies.txt")
+faqs_path = os.path.join(project_root, "files", "faqs.txt")
 
 # ==================== DOCUMENT LOADER ====================
 
@@ -45,5 +52,3 @@ class DocumentLoader:
         if not documents:
             logger.error("No documents loaded. Please check your file paths")
             return []
-            
-        return documents

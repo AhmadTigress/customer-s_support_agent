@@ -5,12 +5,12 @@ from typing import Dict
 from langchain.schema import HumanMessage, AIMessage
 
 # Import your custom classes
-from codes.states.bot_state import AgentState
-from codes.prompt_manager import PromptManager
-from codes.rag_system import TigressTechRAG
-from codes.API.huggingface_api import huggingface_completion
-from codes.supervisor import Supervisor
-from codes.escalation_evaluator import EscalationEvaluator  
+from states.bot_state import AgentState
+from prompt_manager import PromptManager
+from rag_system import TigressTechRAG
+from API.huggingface_api import huggingface_completion
+from supervisor import Supervisor
+from escalation_evaluator import EscalationEvaluator  
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

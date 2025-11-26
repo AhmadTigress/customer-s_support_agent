@@ -6,9 +6,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_community.llms import HuggingFacePipelineLLM
 
 # Import your custom classes and components
-from codes.API.matrix_api import MatrixClient
-from codes.prompt_manager import PromptManager
-from codes.rag_system import TigressTechRAG
+from API.matrix_api import MatrixClient
+from prompt_manager import PromptManager
+from rag_system import TigressTechRAG
 
 
 # Set up logging

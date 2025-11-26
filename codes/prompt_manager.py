@@ -1,4 +1,5 @@
 # ==================== PROMPT MANAGER ====================
+import os
 import yaml
 import logging
 
@@ -6,13 +7,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Define constants (adjust these as needed)
-PROMPT_CONFIG_PATH = "codes/config/prompt_config.yaml" # Path to your YAML config file
+
+config_path = os.path.join(os.path.dirname(__file__), 'config', 'prompt_config.yaml')
+# PROMPT_CONFIG_PATH = "config/prompt_config.yaml" # Path to your YAML config file
 BUSINESS_NAME = "Tigress Tech"  # Fallback business name
 BUSINESS_LOCATION = "Nigeria"  # Fallback business location
 CURRENCY = "NGN"  # Fallback currency
 
 class PromptManager:
-    def __init__(self, config_path=PROMPT_CONFIG_PATH):
+    def __init__(self, config_path) # =PROMPT_CONFIG_PATH):
         self.config = self._load_config(config_path)
         self.business_info = self.config.get('business', {})
     

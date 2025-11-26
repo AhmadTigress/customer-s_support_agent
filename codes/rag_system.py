@@ -15,7 +15,7 @@ PERSIST_DIRECTORY = "./chroma_db"  # Directory to persist vector store
 
 # ADD IMPORT SAFETY - PRESERVE EXISTING STRUCTURE
 try:
-    from codes.document_loader import DocumentLoader
+    from document_loader import DocumentLoader
     logger.info("Successfully imported DocumentLoader from codes.document_loader")
 except ImportError as e:
     logger.warning(f"Failed to import DocumentLoader: {e}")

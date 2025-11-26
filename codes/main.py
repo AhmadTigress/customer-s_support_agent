@@ -11,10 +11,10 @@ import os
 from langchain_core.messages import ToolMessage
 
 # Import your custom classes and components
-from codes.API.matrix_api import MatrixClient
-from codes.prompt_manager import PromptManager
-from codes.rag_system import TigressTechRAG
-from codes.graph.bot_graph import app  
+from API.matrix_api import MatrixClient
+from prompt_manager import PromptManager
+from rag_system import TigressTechRAG
+from graph.bot_graph import app  
 
 # Load environment variables
 load_dotenv()
