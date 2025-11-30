@@ -325,7 +325,7 @@ def run_bot():
         # Initialize Matrix Client
         matrix_client = MatrixClient(
             homeserver=os.getenv("MATRIX_HOMESERVER"),
-            user=os.getenv("MATRIX_USER"),
+            user=os.getenv("MATRIX_USERNAME"),
             password=os.getenv("MATRIX_PASSWORD")
         )
 

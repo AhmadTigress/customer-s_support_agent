@@ -1,15 +1,23 @@
 # tests/unit/test_bot_state.py
+import sys
+import os
+
+# Add project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import pytest
 from codes.states.bot_state import (
-    create_default_state, 
-    validate_state, 
-    update_state_turn, 
+    create_default_state,
+    validate_state,
+    update_state_turn,
     reset_escalation_state
 )
 from langchain_core.messages import HumanMessage, AIMessage
 
 class TestBotState:
-    
+
     def test_create_default_state_initialization(self):
         """Test default state initialization"""
         state = create_default_state()
@@ -19,39 +27,42 @@ class TestBotState:
         assert state["escalation_score"] == 0.0
         assert state["messages"] == []
         assert state["conversation_context"] == {}
-    
+        assert state["turn_count"] == 0  # Should start at 0
+
     def test_validate_state_with_valid_state(self):
         """Test state validation"""
         state = create_default_state()
         assert validate_state(state) == True
-    
+
     def test_validate_state_with_invalid_fields(self):
         """Test state validation with invalid data"""
         state = create_default_state()
         state["user_input"] = None
         assert validate_state(state) == False
-        
+
         state = create_default_state()
         state["needs_rag"] = "not_a_bool"
         assert validate_state(state) == False
-    
+
     def test_update_state_turn_increments_counter(self):
         """Test turn update functionality"""
         state = create_default_state()
+        initial_turn_count = state["turn_count"]  # This should be 0
         updated_state = update_state_turn(state)
-        assert updated_state["turn_count"] == state["turn_count"] + 1
+        # Should increment from 0 to 1
+        assert updated_state["turn_count"] == initial_turn_count + 1
         assert updated_state["failed_attempts"] == 0
-    
+
     def test_reset_escalation_state_clears_fields(self):
         """Test escalation state reset"""
         state = create_default_state()
         state["requires_human_escalation"] = True
         state["escalation_reason"] = "Test reason"
-        
+
         reset_state = reset_escalation_state(state)
         assert reset_state["requires_human_escalation"] == False
         assert reset_state["escalation_reason"] is None
-    
+
     def test_state_with_messages(self):
         """Test state with LangChain messages"""
         state = create_default_state()
@@ -64,17 +75,22 @@ class TestBotState:
         assert len(state["messages"]) == 2
 
 if __name__ == "__main__":
+    # Ensure path is set for standalone execution too
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
     test_instance = TestBotState()
-    
+
     tests = [
         "test_create_default_state_initialization",
-        "test_validate_state_with_valid_state", 
+        "test_validate_state_with_valid_state",
         "test_validate_state_with_invalid_fields",
         "test_update_state_turn_increments_counter",
         "test_reset_escalation_state_clears_fields",
         "test_state_with_messages"
     ]
-    
+
     print("Running BotState tests...")
     for method_name in tests:
         try:
@@ -82,5 +98,5 @@ if __name__ == "__main__":
             print(f"✓ {method_name}")
         except Exception as e:
             print(f"✗ {method_name}: {e}")
-    
+
     print("BotState tests completed!")

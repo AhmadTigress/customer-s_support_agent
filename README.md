@@ -3,7 +3,12 @@
 A Retrieval-Augmented Generation (RAG) multi-agent system built with LangChain and LangGraph frameworks to provide intelligent customer support through Matrix communication platform.
 
 ## Project Overview
-This project is part of the Ready Tensor Agentic AI Development Course - Phase II requirement. It implements a multi-agent system that handles customer complaints, technical support, sales inquiries, and general queries using advanced AI capabilities with RAG architecture.
+## Overview
+A modular, extensible customer support bot for Matrix chat platforms.
+- Answers user queries with retrieval-augmented generation (RAG).
+- Uses Guardrails to filter toxic/profane/inappropriate content.
+- Supports escalation to human agents and customizable workflows.
+- Built with Python, LangChain, and modern AI tooling.
 
 ## System Architecture
 ```txt
@@ -22,8 +27,9 @@ CUSTOM_SUPPORT/
 │   │   └── bot_state.py            # State management
 │   ├── custom_tools.py             # Custom tools (calculator, scheduler)
 │   ├── document_loader.py          # Document loading and processing
-│   ├── escalation_evaluator.py     # Detects need for escalation 
-│   ├── initialize.py               # Loads model and services      
+│   ├── escalation_evaluator.py     # Detects need for escalation
+│   ├── guardrails_ai.py            # Validates input and output ✅ ADDED
+│   ├── initialize.py               # Loads model and services
 │   ├── main.py                     # Main application entry point
 │   ├── prompt_manager.py           # Prompt management and formatting
 │   ├── rag_system.py               # RAG system implementation
@@ -31,20 +37,13 @@ CUSTOM_SUPPORT/
 ├── files/
 │   ├── faqs.txt                    # Frequently Asked Questions
 │   └── services_policies.txt       # Service policies document
-├── .env                            # Environment variables
-└── requirements.txt                # Python dependencies
-```
-
-For the test files
-# Test Architecture
-```text
-CUSTOM_SUPPORT/
 ├── tests/
 │   ├── unit/
 │   │   ├── test_bot_state.py
 │   │   ├── test_custom_tools.py
 │   │   ├── test_document_loader.py
 │   │   ├── test_escalation_evaluator.py
+│   │   ├── test_guardrails_ai.py   # ✅ ADDED test file
 │   │   ├── test_initialize.py
 │   │   ├── test_prompt_manager.py
 │   │   ├── test_rag_system.py
@@ -62,57 +61,70 @@ CUSTOM_SUPPORT/
 │   │   ├── test_live_matrix.py
 │   │   └── test_full_graph.py
 │   └── conftest.py
+├── .env                            # Environment variables
+└── requirements.txt                # Python dependencies
 ```
 
 ## Key Features
-- **Multi-Agent Architecture**: Coordinated agent system with specialized roles
-
-- **RAG Integration**: Retrieval-Augmented Generation for context-aware responses
-
-- **Matrix Integration**: Real-time messaging through Matrix protocol
-
-- **Custom Tools**: Built-in calculator and appointment scheduling capabilities
-
-- **Intelligent Routing**: Smart query classification and routing
-
-- **Privacy Protection**: Built-in privacy guidelines and data handling
+- **Matrix chat integration** (automatic room join, message sync/send)
+- **Guardrails AI for content moderation**: prevents toxic, profane, or policy-violating communication
+- **Retrieval-Augmented Generation (RAG)**: accurate, context-aware answers using LangChain & vector stores
+- **Multi-step workflow and state-based logic**
+- **Human escalation** when the system can't solve the query
+- **Customizable tools and prompt management**
+- **Automatic testing suite**
 
 ## Installation
-1. **Clone the repository**:
-```bash
-git clone https://github.com/AhmadTigress/customer_support.git
-cd customer_support
-```
-2. **Install dependencies**:
-```bash
-pip install -r requirements.txt
-```
-3. **Set up environment variables**:
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-```
-4. **Prepare documents**:
-```bash
-mkdir -p files documents config
-# Add your faqs.txt, services_policies.txt, and prompt_config.yaml
-```
 
-##  Configuration
-Environment Variables (.env)
-```env
-HUGGINGFACE_API_KEY=your_huggingface_api_key
-MATRIX_HOMESERVER=https://matrix.example.com
-MATRIX_USER=@yourbot:example.com
-MATRIX_PASSWORD=your_password
-MATRIX_ROOM_ID=!roomid:example.com
-```
+1. **Clone the Repository**
+    ```sh
+    git clone https://github.com/AhmadTigress/customer-s_support_agent.git
+    cd customer-s_support_agent
+    ```
+
+2. **Python Environment**
+    - Use Python 3.9 or newer.
+    - (Recommended) Create a virtual environment:
+      ```sh
+      python3 -m venv venv
+      source venv/bin/activate
+      ```
+
+3. **Install dependencies**
+    ```sh
+    pip install -r requirements.txt
+    pip install guardrails-ai     # <--- Add this if not in requirements.txt
+    ```
+
+4. **Setup Environment Variables**
+    - Copy `.env copy` to `.env`:
+      ```sh
+      cp ".env copy" .env
+      ```
+    - Fill in `.env` values (Matrix server, user, password, room ID; and if needed, HUGGINGFACE_API_KEY).
+
+    **.env example:**
+    ```
+    MATRIX_HOMESERVER=https://matrix.example.com
+    MATRIX_USER=@bot:example.com
+    MATRIX_PASSWORD=yourpassword
+    MATRIX_ROOM_ID=!some:example.com
+    HUGGINGFACE_API_KEY=your_api_key
+    API_KEY="1234567-FAKE-KEY"
+    ```
 
 ## Usage
-Starting the Bot
-```bash
-python main.py
+
+Run the main bot:
+```sh
+python codes/main.py
 ```
+or test guardrails separately
+```sh
+python codes/guardrails_ai.py
+```
+The bot will auto-join rooms it's involved to and begin processing/supporting conversation.
+
 **Example Interactions**
 - **General Query**: "What are your business hours?"
 
@@ -124,25 +136,15 @@ python main.py
 
 - **Tools**: "Calculate 15% of 200" or "Schedule an appointment"
 
-## Components
+## Configuration
 **Core Agents**
 
-1. **Input Node**: Processes incoming Matrix messages
-
-2. **Query Classifier**: Detects query type and routing needs
-
-3. **RAG System**: Retrieves relevant context from knowledge base
-
-4. **LLM Node**: Generates responses using Hugging Face models
-
-5. **Supervisor**: Coordinates complex queries and tool usage
-
-6. **Output Node**: Formats and sends responses
-
-**Custom Tools**
-  - **Calculator**: Mathematical expressions and unit conversions
-
-  - **Appointment Scheduler**: Customer meeting scheduling system
+- **codes/API/matrix_api.py**: Handles matrix chat API integration(login, sync, message sending).
+- **codes/guardrails_ai.py**: Guardrails protection on user input and bot output.
+- **codes/rag_system.py**: RAG logic for answer generation.
+- **codes/main.py**: Main entry point, loads/links all functionality.
+- **codes/custom_tools.py**, **codes/escalation_evaluator.py**, **codes/      document_loader.py**: Custom behaviours, escalation, data loading.
+- **.env**: Sensitive configuration(not in public repo!)
 
 **Knowledge Base**
   - FAQ documents
@@ -165,19 +167,26 @@ python main.py
   - **Language**: Python 3.9+
 
 
-## Query Processing Flow
+## How it works
+1. Connects to your Matrix server as a bot user.
+2. Listens for and receives messages.
+3. Applies Guardrails to input to prevent bad content.
+4. Answers with RAG system (based on documents/data).
+5. Applies Guardrails to outgoing replies.
+6. Escalates to human if answer cannot be generated.
+(See code comments for deeper technical detail.)
 
-  - **Message Reception**: Matrix client receives message
 
-  - **Query Classification**: Detects query type and complexity
-
-  - **Context Retrieval**: RAG system fetches relevant information
-
-  - **Response Generation**: LLM generates context-aware response
-
-  - **Tool Integration**: Optional tool execution for specific queries
-
-  - **Response Delivery**: Formatted response sent via Matrix
+## Troubleshooting
+- Bot not joining rooms? - Check your
+- Matrix credentials and permissions.
+- Guardrails errors? - Try updating/
+- installing
+`guardrails-ai` or check error messages in logs.
+- Can't generate a response? -
+- Ensure your vector store/db and API keys (Huggingface) are set.
+- For logging/debugging: - Adjust
+`logging.basicConfig(level=log ging. INFO)` in the code.
 
 ## Contributing
 

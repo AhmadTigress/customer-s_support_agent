@@ -2,13 +2,14 @@
 import os
 import torch
 import logging
+from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from langchain_community.llms import HuggingFacePipelineLLM
+from langchain_community.llms import HuggingFacePipeline
 
 # Import your custom classes and components
-from API.matrix_api import MatrixClient
-from prompt_manager import PromptManager
-from rag_system import TigressTechRAG
+from codes.API.matrix_api import MatrixClient
+from codes.prompt_manager import PromptManager
+from codes.rag_system import TigressTechRAG
 
 
 # Set up logging
@@ -20,9 +21,9 @@ load_dotenv()
 
 # ==================== MISSING CONFIG VARIABLES ====================
 MODEL_NAME = os.getenv("MODEL_NAME", "HuggingFaceH4/zephyr-7b-beta")  # Fallback model
-HF_TOKEN = os.getenv("HF_TOKEN", "")
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 MATRIX_HOMESERVER = os.getenv("MATRIX_HOMESERVER", "")
-MATRIX_USER = os.getenv("MATRIX_USER", "")
+MATRIX_USERNAME = os.getenv("MATRIX_USERNAME", "")
 MATRIX_PASSWORD = os.getenv("MATRIX_PASSWORD", "")
 
 
@@ -33,15 +34,15 @@ logger.info("Initializing components...")
 
 # 1. Initialize LLM first
 logger.info("Loading LLM model and tokenizer...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_TOKEN)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HUGGINGFACE_API_KEY)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
     device_map="auto",
     torch_dtype="auto",
-    token=HF_TOKEN,
+    token=HUGGINGFACE_API_KEY,
 )
 pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
-hf_llm = HuggingFacePipelineLLM(pipeline=pipe)
+hf_llm = HuggingFacePipeline(pipeline=pipe)
 
 # 2. Initialize Prompt Manager
 logger.info("Loading prompt configuration...")
@@ -56,4 +57,4 @@ if not rag_success:
 
 # 4. Initialize Matrix Client
 logger.info("Initializing Matrix client...")
-matrix_client = MatrixClient(MATRIX_HOMESERVER, MATRIX_USER, MATRIX_PASSWORD)
+matrix_client = MatrixClient(MATRIX_HOMESERVER, MATRIX_USERNAME, MATRIX_PASSWORD)
