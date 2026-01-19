@@ -17,7 +17,7 @@ from states.bot_state import AgentState
 load_dotenv()
 logger = logging.getLogger("TigraMain")
 
-# --- PRODUCTION CONFIGURATION ---
+# CONFIGURATION
 MAX_WORKERS = 20
 MAX_CONCURRENT_TASKS = 50
 MAX_HISTORY_LENGTH = 10 # Prevent unbounded message growth
@@ -25,7 +25,7 @@ execution_executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
 shutdown_event = asyncio.Event()
 
-# LOGICAL GAP FIX: Idempotency cache (stores event_ids for 5 mins to prevent double-processing)
+# Idempotency cache (stores event_ids for 5 mins to prevent double-processing)
 event_id_cache = TTLCache(maxsize=1000, ttl=300)
 
 async def process_with_retry(input_data, config, retries=2):
@@ -62,7 +62,7 @@ async def production_message_processor(event, matrix_client):
 
     config = {"configurable": {"thread_id": thread_id}}
 
-    # LOGICAL GAP FIX: Unbounded message growth (Trimming)
+    # Unbounded message growth (Trimming)
     # We retrieve the state to ensure we don't exceed MAX_HISTORY_LENGTH
     existing_state = app.get_state(config)
     messages = existing_state.values.get("messages", []) if existing_state.values else []
@@ -76,9 +76,9 @@ async def production_message_processor(event, matrix_client):
     }
 
     try:
-        # ARCHITECTURAL FIX: Semaphore placement (only lock during actual graph work)
+        # Semaphore placement (only lock during actual graph work)
         async with semaphore:
-            # PRODUCTION MONITORING FIX: Telemetry
+            # Telemetry
             start_time = time.perf_counter()
             final_state = await process_with_retry(input_data, config)
             duration = time.perf_counter() - start_time
@@ -102,7 +102,7 @@ async def shutdown(loop):
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     [t.cancel() for t in tasks]
 
-    # ARCHITECTURAL FIX: Zombie Task Gathering (Timeout protection)
+    # Zombie Task Gathering (Timeout protection)
     logger.info(f"Cancelling {len(tasks)} active tasks...")
     try:
         await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=5.0)
