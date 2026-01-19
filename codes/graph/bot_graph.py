@@ -3,163 +3,102 @@ import logging
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-# Import nodes and state
+# Import specialized nodes and state
 from states.bot_state import AgentState
 from nodes.bot_nodes import (
     input_node,
-    detect_query_type_node,
-    secure_rag_node,
-    llm_node,
     supervisor_node,
-    output_node,
+    secure_rag_node,
+    technical_support_node,
+    billing_agent_node,
+    general_inquiry_node,
     escalation_check_node,
     ask_human_node,
-    process_human_response_node
+    process_human_response_node,
+    output_node
 )
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==================== ROUTING FUNCTIONS ====================
-def route_based_on_query_type(state: AgentState) -> str:
-    """
-    Determine the processing path based on query type.
-    Returns either 'supervisor_path' or 'direct_llm_path'
-    """
-    try:
-        # Use get with default values to avoid KeyErrors
-        query_type = state.get("query_type", "general")
-        needs_rag = state.get("needs_rag", True)
-        
-        # Debug logging
-        logger.info(f"Routing decision - query_type: {query_type}, needs_rag: {needs_rag}")
-        
-        # Use supervisor for complex queries that don't need RAG
-        # or for specific query types that require special handling
-        supervisor_query_types = ["complaint", "report", "technical", "complex"]
-        
-        if not needs_rag or query_type in supervisor_query_types:
-            logger.info(f"Routing to supervisor for query type: {query_type}")
-            return "supervisor_path"
-        else:
-            logger.info(f"Routing to direct LLM for query type: {query_type}")
-            return "direct_llm_path"
-            
-    except Exception as e:
-        logger.error(f"Error in route_based_on_query_type: {e}")
-        # Default to supervisor path for safety
-        return "supervisor_path"
 
-
-def route_after_escalation_check(state: AgentState) -> str:
+def route_to_specialized_agent(state: AgentState) -> str:
     """
-    Determine if we need human decision or can proceed directly
+    Routes the graph to the agent chosen by the Supervisor.
     """
-    try:
-        requires_human_escalation = state.get("requires_human_escalation", False)
-        escalation_score = state.get("escalation_score", 0.0)
-        
-        logger.info(f"Escalation check - requires_human: {requires_human_escalation}, score: {escalation_score}")
-        
-        # Validate escalation score range
-        if not 0.0 <= escalation_score <= 1.0:
-            logger.warning(f"Invalid escalation score: {escalation_score}, defaulting to 0.0")
-            escalation_score = 0.0
-        
-        if requires_human_escalation and escalation_score > 0.7:
-            logger.info(f"High escalation score ({escalation_score:.2f}) - requesting human decision")
-            return "ask_human"
-        elif requires_human_escalation:
-            logger.info(f"Moderate escalation ({escalation_score:.2f}) - proceeding with automated escalation")
-            return "output"
-        else:
-            logger.info("No escalation needed - proceeding to output")
-            return "output"
-            
-    except Exception as e:
-        logger.error(f"Error in route_after_escalation_check: {e}")
-        # Default to output for safety
-        return "output"
+    next_agent = state.get("next_agent", "general_inquiry_node")
+    logger.info(f"Routing workflow to: {next_agent}")
+    return next_agent
 
+def route_after_escalation(state: AgentState) -> str:
+    """
+    Determines if human-in-the-loop intervention is required.
+    """
+    if state.get("requires_human_escalation", False) and state.get("escalation_score", 0) > 0.7:
+        return "ask_human"
+    return "output_node"
 
 # ==================== GRAPH CONSTRUCTION ====================
+
 def create_workflow():
-    """Create and compile the workflow graph with human-in-the-loop"""
-    logger.info("Building enhanced workflow graph with human-in-the-loop...")
+    workflow = StateGraph(AgentState)
 
-    try:
-        workflow = StateGraph(AgentState)
+    # 1. Add all nodes
+    workflow.add_node("input_node", input_node)
+    workflow.add_node("supervisor_node", supervisor_node)
+    workflow.add_node("secure_rag_node", secure_rag_node)
 
-        # Add nodes in execution order
-        workflow.add_node("input_node", input_node)
-        workflow.add_node("detect_query_type", detect_query_type_node)
-        workflow.add_node("secure_rag", secure_rag_node)
-        workflow.add_node("llm_node", llm_node)
-        workflow.add_node("supervisor", supervisor_node)
-        workflow.add_node("escalation_check", escalation_check_node)
-        workflow.add_node("ask_human", ask_human_node) 
-        workflow.add_node("process_human_response", process_human_response_node)  
-        workflow.add_node("output_node", output_node)
+    # Worker Spokes
+    workflow.add_node("technical_support_node", technical_support_node)
+    workflow.add_node("billing_agent_node", billing_agent_node)
+    workflow.add_node("general_inquiry_node", general_inquiry_node)
 
-        # Define the flow
-        workflow.set_entry_point("input_node")
-        workflow.add_edge("input_node", "detect_query_type")
+    # Quality & Human Control
+    workflow.add_node("escalation_check_node", escalation_check_node)
+    workflow.add_node("ask_human", ask_human_node)
+    workflow.add_node("process_human_response", process_human_response_node)
+    workflow.add_node("output_node", output_node)
 
-        # Conditional routing after query type detection
-        workflow.add_conditional_edges(
-            "detect_query_type",
-            route_based_on_query_type,
-            {
-                "supervisor_path": "supervisor",
-                "direct_llm_path": "secure_rag"
-            }
-        )
+    # 2. Define the Hub-and-Spoke edges
+    workflow.set_entry_point("input_node")
+    workflow.add_edge("input_node", "supervisor_node")
 
-        # Direct LLM path: secure_rag -> llm_node -> escalation_check
-        workflow.add_edge("secure_rag", "llm_node")
-        workflow.add_edge("llm_node", "escalation_check")
+    # After the Supervisor decides, we fetch RAG context for the chosen agent
+    workflow.add_edge("supervisor_node", "secure_rag_node")
 
-        # Supervisor path: supervisor -> escalation_check
-        workflow.add_edge("supervisor", "escalation_check")
+    # 3. Conditional Routing from RAG to the chosen Specialist
+    workflow.add_conditional_edges(
+        "secure_rag_node",
+        route_to_specialized_agent,
+        {
+            "technical_support_node": "technical_support_node",
+            "billing_agent_node": "billing_agent_node",
+            "general_inquiry_node": "general_inquiry_node",
+            "tool_node": "general_inquiry_node" # Placeholder for tool logic
+        }
+    )
 
-        # Conditional routing after escalation check
-        workflow.add_conditional_edges(
-            "escalation_check",
-            route_after_escalation_check,
-            {
-                "ask_human": "ask_human",
-                "output": "output_node"
-            }
-        )
+    # 4. All workers flow to the Escalation Check
+    workflow.add_edge("technical_support_node", "escalation_check_node")
+    workflow.add_edge("billing_agent_node", "escalation_check_node")
+    workflow.add_edge("general_inquiry_node", "escalation_check_node")
 
-        # Human decision flow: ask_human -> process_human_response -> output
-        workflow.add_edge("ask_human", "process_human_response")
-        workflow.add_edge("process_human_response", "output_node")
+    # 5. Final output or Human intervention
+    workflow.add_conditional_edges(
+        "escalation_check_node",
+        route_after_escalation,
+        {
+            "ask_human": "ask_human",
+            "output_node": "output_node"
+        }
+    )
 
-        # Final output to end
-        workflow.add_edge("output_node", END)
+    workflow.add_edge("ask_human", "process_human_response")
+    workflow.add_edge("process_human_response", "output_node")
+    workflow.add_edge("output_node", END)
 
-        # ==================== COMPILE WITH CHECKPOINTING ====================
-        # Set up memory for checkpointing with interrupt
-        memory = MemorySaver()
-        app = workflow.compile(
-            checkpointer=memory, 
-            interrupt_before=["ask_human"]  # Enables the human-in-the-loop interrupt
-        )
+    # 6. Compile
+    memory = MemorySaver()
+    return workflow.compile(checkpointer=memory, interrupt_before=["ask_human"])
 
-        logger.info("Human-in-the-loop workflow compiled successfully with checkpointing")
-        return app
-        
-    except Exception as e:
-        logger.error(f"Error creating workflow: {e}")
-        raise
-
-# Create the workflow application
-try:
-    app = create_workflow()
-    logger.info("Workflow application created successfully")
-except Exception as e:
-    logger.error(f"Failed to create workflow application: {e}")
-    # Create a minimal fallback app or re-raise based on your needs
-    raise
+app = create_workflow()

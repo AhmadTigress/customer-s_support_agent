@@ -13,6 +13,7 @@ A modular, extensible customer support bot for Matrix chat platforms.
 ## System Architecture
 ```txt
 CUSTOM_SUPPORT/
+
 ├── codes/
 │   ├── API/
 │   │   ├── huggingface_api.py      # Hugging Face LLM integration
@@ -33,7 +34,8 @@ CUSTOM_SUPPORT/
 │   ├── main.py                     # Main application entry point
 │   ├── prompt_manager.py           # Prompt management and formatting
 │   ├── rag_system.py               # RAG system implementation
-│   └── supervisor.py               # Supervisor agent coordination
+│   └── supervisor.py              # Supervisor agent coordination
+|--- app.py               #
 ├── files/
 │   ├── faqs.txt                    # Frequently Asked Questions
 │   └── services_policies.txt       # Service policies document
