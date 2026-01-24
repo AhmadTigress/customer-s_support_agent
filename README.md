@@ -17,7 +17,7 @@ CUSTOM_SUPPORT/
 ├── codes/
 │   ├── API/
 │   │   ├── huggingface_api.py      # Hugging Face LLM integration
-│   │   └── matrix_api.py           # Matrix client communication
+│   │
 │   ├── config/
 │   │   └── prompt_config.yaml      # YAML configuration for prompts
 │   ├── graph/
@@ -29,12 +29,17 @@ CUSTOM_SUPPORT/
 │   ├── custom_tools.py             # Custom tools (calculator, scheduler)
 │   ├── document_loader.py          # Document loading and processing
 │   ├── escalation_evaluator.py     # Detects need for escalation
+|   |-- giskard_eval.py             # Evaluates and tests RAG performance.
 │   ├── guardrails_ai.py            # Validates input and output ✅ ADDED
 │   ├── initialize.py               # Loads model and services
 │   ├── main.py                     # Main application entry point
 │   ├── prompt_manager.py           # Prompt management and formatting
 │   ├── rag_system.py               # RAG system implementation
 │   └── supervisor.py              # Supervisor agent coordination
+|--- monitoring/
+|   |--- metrics.py                 # Custom prometheus metric
+|   |--- health.py                  # Detailed dependency checks
+|
 |--- app.py               #
 ├── files/
 │   ├── faqs.txt                    # Frequently Asked Questions

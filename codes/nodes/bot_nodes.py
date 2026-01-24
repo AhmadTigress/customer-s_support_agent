@@ -9,6 +9,7 @@ from rag_system import TigressTechRAG
 from API.huggingface_api import huggingface_completion
 from supervisor import Supervisor
 from escalation_evaluator import EscalationEvaluator
+from guardrails_ai import validate_response
 
 # Fix: Config path visibility
 CONFIG_PATH = os.getenv("PROMPT_CONFIG_PATH",
@@ -75,52 +76,64 @@ def technical_support_node(state: AgentState) -> Dict:
     final_prompt = prompt_manager.format_main_prompt(
         query_type="technical",
         context=state.get("context", ""),
-        conversation_history=history
+        conversation_history=history,
+        user_input=state.get("user_input", "")
     )
 
     # Fix: API utility now allows exceptions to trigger LangGraph retries
     response = huggingface_completion(final_prompt)
     answer = response['response']
 
+    validated_answer = validate_response(user_input, answer)
+
     return {
-        "messages": [AIMessage(content=answer)],
-        "response": answer,
+        "messages": [AIMessage(content=validated_answer)],
+        "response": validated_answer,
         "sender": "tech_support"
     }
+
 
 def billing_agent_node(state: AgentState) -> Dict:
     history = get_history_str(state)
     final_prompt = prompt_manager.format_main_prompt(
         query_type="billing",
         context=state.get("context", ""),
-        conversation_history=history
+        conversation_history=history,
+        user_input=state.get("user_input", "")
     )
 
     response = huggingface_completion(final_prompt)
     answer = response['response']
 
+    validated_answer = validate_response(user_input, answer)
+
     return {
-        "messages": [AIMessage(content=answer)],
-        "response": answer,
+        "messages": [AIMessage(content=validated_answer)],
+        "response": validated_answer,
         "sender": "billing_agent"
     }
+
 
 def general_inquiry_node(state: AgentState) -> Dict:
     history = get_history_str(state)
     final_prompt = prompt_manager.format_main_prompt(
         query_type="general",
         context=state.get("context", ""),
-        conversation_history=history
+        conversation_history=history,
+        user_input=state.get("user_input", "")
     )
 
     response = huggingface_completion(final_prompt)
     answer = response['response']
 
+    validated_answer = validate_response(user_input, answer)
+
     return {
-        "messages": [AIMessage(content=answer)],
-        "response": answer,
+        "messages": [AIMessage(content=validated_answer)],
+        "response": validated_answer,
         "sender": "general_agent"
     }
+
 
 # ==================== UTILITY NODES ====================
 

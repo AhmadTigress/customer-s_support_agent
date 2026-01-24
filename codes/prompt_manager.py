@@ -36,27 +36,21 @@ class PromptManager:
             conversation_history=conversation_history
         )
 
-    def format_main_prompt(self, query_type, context="", conversation_history="", user_input=""):
-        """
-        UPDATED: Matches the variables in your updated prompt_config.yaml
-        and the call signatures in bot_nodes.py.
-        """
-        # 1. Get the main structural template
-        template = self.config.get('main_template', "{system_message}\n{instructions}\n{context}")
+    # codes/prompt_manager.py refinement
+def format_main_prompt(self, query_type, context="", conversation_history="", user_input=""):
+    template = self.config.get('main_template', "")
+    query_configs = self.config.get('query_types', {})
+    agent_cfg = query_configs.get(query_type, query_configs.get('general', {}))
 
-        # 2. Get instructions for the specific agent (technical, billing, general)
-        query_configs = self.config.get('query_types', {})
-        agent_cfg = query_configs.get(query_type, query_configs.get('general', {}))
-
-        # 3. Format the final string using YAML keys
-        return template.format(
-            system_message=self.config.get('supervisor', {}).get('system_prompt', ""), # Optional global context
-            name=self.base_info.get('name', "Tigra"),
-            business=self.base_info.get('business', "Tigress Tech"),
-            location=self.base_info.get('location', "Nigeria"),
-            currency=self.base_info.get('currency', "₦"),
-            context=context,
-            conversation_history=conversation_history,
-            user_input=user_input,
-            instructions=agent_cfg.get('instruction', "Help the user.")
-        )
+    return template.format(
+        # Use a generic system prompt
+        system_message="You are a helpful support assistant for Tigress Tech Labs.",
+        name=self.base_info.get('name', "Tigra"),
+        business=self.base_info.get('business', "Tigress Tech"),
+        location=self.base_info.get('location', "Nigeria"),
+        currency=self.base_info.get('currency', "₦"),
+        context=context,
+        conversation_history=conversation_history,
+        user_input=user_input,
+        instructions=agent_cfg.get('instruction', "Help the user.")
+    )
